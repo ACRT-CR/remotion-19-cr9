@@ -14,12 +14,26 @@ export const openDirectoryInFinder = (
 		throw new Error(`Not allowed to open ${relativeToProcessCwd}`);
 	}
 
-	const command =
-		platform() === 'darwin'
-			? 'open'
-			: platform() === 'linux'
-			? 'xdg-open'
-			: 'start';
+	if (platform() === 'win32') {
+		const proc = spawn('explorer.exe', ['/select,', resolved]);
+
+		return new Promise<void>((resolve, reject) => {
+			proc.on('exit', (code) => {
+				// explorer.exe returns 1 even on success
+				if (code === 0 || code === 1) {
+					resolve();
+				} else {
+					reject(new Error(`explorer.exe exited with code ${code}`));
+				}
+			});
+			proc.on('error', (err) => {
+				proc.kill();
+				reject(err);
+			});
+		});
+	}
+
+	const command = platform() === 'darwin' ? 'open' : 'xdg-open';
 
 	const p = spawn(
 		command,
